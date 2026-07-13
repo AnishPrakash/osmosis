@@ -1,0 +1,5 @@
+[flake8]
+# Ignore multiple spaces before operators/keywords and multiple statements on one line
+extend-ignore = E221, E241, E272, E701
+# Set a more forgiving line length if needed
+max-line-length = 100
