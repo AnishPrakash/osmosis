@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.collector
+    # ── Least-privilege: only the 4 capabilities eBPF actually needs ───────
+    cap_add:
+      - BPF           # Load eBPF bytecode + create BPF maps
+      - PERFMON       # Attach to tracepoints + perf ring buffers
+      - SYS_RESOURCE  # Raise RLIMIT_MEMLOCK for locked BPF map memory
+      - SYS_PTRACE    # Process namespace introspection
+    # NOT adding SYS_ADMIN or using privileged: true
+    pid: "host"       # Required: see host PIDs for correct attribution
+    volumes:
+      - /sys/kernel/debug/tracing:/sys/kernel/debug/tracing:ro  # tracefs
+      - /sys/kernel/btf/vmlinux:/sys/kernel/btf/vmlinux:ro       # BTF CO-RE
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro                          # cgroup map
+      - /sys/fs/bpf:/sys/fs/bpf                                   # BPF pin fs
+      - ./osmosis.db:/app/osmosis.db
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: ../docker/Dockerfile.dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - collector
+    restart: unless-stopped
