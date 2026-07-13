@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pkl
+*.pt
+.env
+node_modules/
+dist/
+osmosis.db
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
+htmlcov/
