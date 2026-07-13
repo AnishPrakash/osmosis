@@ -84,7 +84,7 @@ def train_hybrid(epochs: int = 100, batch_size: int = 32, lr: float = 1e-3):
     torch.save(vae.state_dict(), MODEL_DIR / "vae.pt")
     with open(MODEL_DIR / "iso_latent.pkl", "wb") as f:
         pickle.dump(iso_latent, f)
-    print(f"[OSmosis] ✅ Hybrid VAE+IF model saved.")
+    print("[OSmosis] ✅ Hybrid VAE+IF model saved.")
     print(f"           vae.pt         → {MODEL_DIR / 'vae.pt'}")
     print(f"           iso_latent.pkl → {MODEL_DIR / 'iso_latent.pkl'}")
 

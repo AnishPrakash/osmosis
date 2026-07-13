@@ -12,7 +12,9 @@ Isolation Forest deployments to fail. Instead:
 This is the same approach used in FedMon (94% precision, 91% recall).
 """
 
-import json, pickle, sqlite3
+import json
+import pickle
+import sqlite3
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler

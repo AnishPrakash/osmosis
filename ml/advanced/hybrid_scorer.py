@@ -3,7 +3,8 @@ OSmosis Advanced ML - VAE + Isolation Forest Hybrid Scorer
 Combines reconstruction error (VAE) + isolation score (IF on latent space).
 """
 
-import torch, pickle
+import torch
+import pickle
 import numpy as np
 from pathlib import Path
 from ml.feature_extractor import extract_features
