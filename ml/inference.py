@@ -48,7 +48,7 @@ class AnomalyScorer:
     def score(self, process_stats: dict) -> float:
         """Normalized risk score [0, 1]. >0.6 suspicious, >0.8 high risk."""
 	if self.model is None:
-		return 0.0
+            return 0.0
         raw = self.raw_score(process_stats)
         t_med = self.thresholds.get("threshold_med", -0.3)
         t_high = self.thresholds.get("threshold_high", -0.5)
