@@ -5,7 +5,7 @@ setup:
 	cd dashboard && npm install
 
 backend:
-	sudo python3 -m uvicorn collector.main:app --reload --host 0.0.0.0 --port 8000
+	sudo venv/bin/python -m uvicorn collector.main:app --reload --host 0.0.0.0 --port 8000
 
 dashboard:
 	cd dashboard && npm run dev
