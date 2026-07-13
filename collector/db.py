@@ -57,11 +57,13 @@ CREATE TABLE IF NOT EXISTS cgroup_map (
 );
 """
 
+
 async def init_db(path: Path = DB_PATH) -> Path:
     async with aiosqlite.connect(path) as db:
         await db.executescript(CREATE_SQL)
         await db.commit()
     return path
+
 
 async def insert_event(db_path: Path, event: dict):
     async with aiosqlite.connect(db_path) as db:
@@ -79,7 +81,7 @@ async def insert_event(db_path: Path, event: dict):
                 event.get("comm"),
                 event.get("latency_ns"),
                 json.dumps(event),
-            )
+            ),
         )
         # Also write scheduler events to timeline table for /api/timeline
         if event.get("type") == "sched_switch":
@@ -93,43 +95,54 @@ async def insert_event(db_path: Path, event: dict):
                     event.get("prev_comm"),
                     event.get("next_pid"),
                     event.get("next_comm"),
-                )
+                ),
             )
         await db.commit()
 
-async def insert_anomaly(db_path: Path, pid: int, comm: str, container_id: str,
-                          score: float, is_anomaly: bool):
+
+async def insert_anomaly(
+    db_path: Path,
+    pid: int,
+    comm: str,
+    container_id: str,
+    score: float,
+    is_anomaly: bool,
+):
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
             "INSERT INTO anomaly_scores (ts_s, pid, container_id, comm, score, is_anomaly) "
             "VALUES (?,?,?,?,?,?)",
-            (time.time(), pid, container_id, comm, score, int(is_anomaly))
+            (time.time(), pid, container_id, comm, score, int(is_anomaly)),
         )
         await db.commit()
+
 
 async def upsert_cgroup(db_path: Path, cgroup_id: int, container_id: str):
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
             "INSERT OR REPLACE INTO cgroup_map (cgroup_id, container_id, updated_at) "
             "VALUES (?,?,?)",
-            (cgroup_id, container_id, time.time())
+            (cgroup_id, container_id, time.time()),
         )
         await db.commit()
 
-async def get_recent_events(db_path: Path, limit: int = 200,
-                             event_type: Optional[str] = None) -> list:
+
+async def get_recent_events(
+    db_path: Path, limit: int = 200, event_type: Optional[str] = None
+) -> list:
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
         if event_type:
             rows = await db.execute_fetchall(
                 "SELECT payload FROM events WHERE type=? ORDER BY ts_s DESC LIMIT ?",
-                (event_type, limit)
+                (event_type, limit),
             )
         else:
             rows = await db.execute_fetchall(
                 "SELECT payload FROM events ORDER BY ts_s DESC LIMIT ?", (limit,)
             )
         return [json.loads(r["payload"]) for r in rows]
+
 
 async def get_timeline(db_path: Path, seconds: int = 10) -> list:
     """Get scheduler timeline for the last N seconds — powers the Gantt chart."""
@@ -139,6 +152,6 @@ async def get_timeline(db_path: Path, seconds: int = 10) -> list:
         rows = await db.execute_fetchall(
             "SELECT ts_s, cpu, prev_pid, prev_comm, next_pid, next_comm "
             "FROM sched_timeline WHERE ts_s >= ? ORDER BY ts_s ASC LIMIT 500",
-            (cutoff,)
+            (cutoff,),
         )
         return [dict(r) for r in rows]

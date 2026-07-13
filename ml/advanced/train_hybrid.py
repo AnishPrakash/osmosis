@@ -10,7 +10,7 @@ Run after collecting ~30 min of baseline data and having run ml/train.py first:
     python3 -m ml.advanced.train_hybrid
 """
 
-import json, pickle, sqlite3
+import pickle
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -22,6 +22,7 @@ from ml.advanced.vae_encoder import OSmosisVAE
 from ml.train import rebuild_process_stats
 
 MODEL_DIR = Path("ml/models")
+
 
 def train_hybrid(epochs: int = 100, batch_size: int = 32, lr: float = 1e-3):
     print("[OSmosis] Rebuilding process stats from DB...")
@@ -42,11 +43,11 @@ def train_hybrid(epochs: int = 100, batch_size: int = 32, lr: float = 1e-3):
     X_scaled = scaler.transform(X).astype(np.float32)
 
     dataset = TensorDataset(torch.tensor(X_scaled))
-    loader  = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # ── Step 1: Train VAE ────────────────────────────────────────────────────
     print(f"[OSmosis] Training VAE for {epochs} epochs...")
-    vae       = OSmosisVAE()
+    vae = OSmosisVAE()
     optimizer = torch.optim.Adam(vae.parameters(), lr=lr)
 
     vae.train()
@@ -66,7 +67,7 @@ def train_hybrid(epochs: int = 100, batch_size: int = 32, lr: float = 1e-3):
     print("[OSmosis] Encoding baseline into latent space...")
     vae.eval()
     with torch.no_grad():
-        X_t  = torch.tensor(X_scaled)
+        X_t = torch.tensor(X_scaled)
         mu, _ = vae.encoder(X_t)
         Z = mu.numpy()
 
@@ -83,10 +84,10 @@ def train_hybrid(epochs: int = 100, batch_size: int = 32, lr: float = 1e-3):
     torch.save(vae.state_dict(), MODEL_DIR / "vae.pt")
     with open(MODEL_DIR / "iso_latent.pkl", "wb") as f:
         pickle.dump(iso_latent, f)
-
     print(f"[OSmosis] ✅ Hybrid VAE+IF model saved.")
     print(f"           vae.pt         → {MODEL_DIR / 'vae.pt'}")
     print(f"           iso_latent.pkl → {MODEL_DIR / 'iso_latent.pkl'}")
+
 
 if __name__ == "__main__":
     train_hybrid()

@@ -4,7 +4,8 @@ Spawns all 5 eBPF probes, aggregates events via EventAggregator,
 stores to SQLite asynchronously, and fans out to WebSocket clients.
 """
 
-import asyncio, json, time
+import asyncio
+import json
 from collections import deque
 from pathlib import Path
 from typing import Optional
@@ -14,23 +15,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from collector.aggregator import EventAggregator
-from collector.db import init_db, insert_event, insert_anomaly, upsert_cgroup, \
-    get_recent_events, get_timeline
+from collector.db import (
+    init_db,
+    insert_event,
+    insert_anomaly,
+    upsert_cgroup,
+    get_recent_events,
+    get_timeline,
+)
 from ml.inference import AnomalyScorer
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 app = FastAPI(title="OSmosis Collector", version="2.0.0")
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
 
 # ── Global state ──────────────────────────────────────────────────────────────
-DB_PATH: Optional[Path]  = None
+DB_PATH: Optional[Path] = None
 connected_ws: list[WebSocket] = []
-event_buffer: deque       = deque(maxlen=5000)
-aggregator                = EventAggregator()
-scorer                    = AnomalyScorer()
+event_buffer: deque = deque(maxlen=5000)
+aggregator = EventAggregator()
+scorer = AnomalyScorer()
 
 # ── Probe subprocess commands ─────────────────────────────────────────────────
 PROBES = [
@@ -40,6 +46,7 @@ PROBES = [
     ["sudo", "python3", "probes/io_tracer.py"],
     ["sudo", "python3", "probes/container_tracker.py"],
 ]
+
 
 async def run_probe(cmd: list[str]):
     """Launch a probe subprocess and consume its stdout JSON stream."""
@@ -64,6 +71,7 @@ async def run_probe(cmd: list[str]):
         except Exception:
             pass
 
+
 async def process_event(event: dict):
     """Core event processing: aggregate → score → store → broadcast."""
     # Aggregate into per-process state
@@ -77,8 +85,7 @@ async def process_event(event: dict):
         event["risk_score"] = score
         if scorer.is_anomaly(ps):
             await insert_anomaly(
-                DB_PATH, ps["pid"], ps["comm"],
-                ps["container_id"], score, True
+                DB_PATH, ps["pid"], ps["comm"], ps["container_id"], score, True
             )
 
     # Buffer and persist
@@ -96,6 +103,7 @@ async def process_event(event: dict):
     for d in dead:
         connected_ws.remove(d)
 
+
 # ── Startup ────────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
@@ -105,35 +113,48 @@ async def startup():
         asyncio.create_task(run_probe(cmd))
     print("[OSmosis] Collector v2 started. All probes launching...")
 
+
 # ── REST Endpoints ─────────────────────────────────────────────────────────────
 @app.get("/api/events")
 async def api_events(limit: int = 100, event_type: str = None):
-    return JSONResponse(await get_recent_events(DB_PATH, limit=limit, event_type=event_type))
+    return JSONResponse(
+        await get_recent_events(DB_PATH, limit=limit, event_type=event_type)
+    )
+
 
 @app.get("/api/processes")
 async def api_processes():
     return JSONResponse(aggregator.get_top_processes(30))
 
+
 @app.get("/api/containers")
 async def api_containers():
     """Aggregate stats grouped by container_id."""
     from collections import defaultdict
-    by_cid = defaultdict(lambda: {
-        "container_id": "", "syscall_count": 0, "page_faults": 0,
-        "vfs_writes": 0, "vfs_renames": 0,
-        "max_risk_score": 0.0, "process_count": 0
-    })
+
+    by_cid = defaultdict(
+        lambda: {
+            "container_id": "",
+            "syscall_count": 0,
+            "page_faults": 0,
+            "vfs_writes": 0,
+            "vfs_renames": 0,
+            "max_risk_score": 0.0,
+            "process_count": 0,
+        }
+    )
     for ps in aggregator.get_all_processes():
         cid = ps.get("container_id", "host")
-        c   = by_cid[cid]
-        c["container_id"]   = cid
+        c = by_cid[cid]
+        c["container_id"] = cid
         c["syscall_count"] += ps["syscall_count"]
-        c["page_faults"]   += ps["page_faults"]
-        c["vfs_writes"]    += ps["vfs_writes"]
-        c["vfs_renames"]   += ps["vfs_renames"]
+        c["page_faults"] += ps["page_faults"]
+        c["vfs_writes"] += ps["vfs_writes"]
+        c["vfs_renames"] += ps["vfs_renames"]
         c["max_risk_score"] = max(c["max_risk_score"], ps["risk_score"])
         c["process_count"] += 1
     return JSONResponse(list(by_cid.values()))
+
 
 @app.get("/api/timeline")
 async def api_timeline(seconds: int = 10):
@@ -143,13 +164,15 @@ async def api_timeline(seconds: int = 10):
     """
     return JSONResponse(await get_timeline(DB_PATH, seconds=seconds))
 
+
 @app.get("/api/stats")
 async def api_stats():
     return {
         "total_events_buffered": len(event_buffer),
-        "active_processes":      len(aggregator.get_all_processes()),
-        "connected_clients":     len(connected_ws),
+        "active_processes": len(aggregator.get_all_processes()),
+        "connected_clients": len(connected_ws),
     }
+
 
 # ── WebSocket Endpoint ─────────────────────────────────────────────────────────
 @app.websocket("/ws/events")

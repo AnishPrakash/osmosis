@@ -17,11 +17,14 @@ import torch
 import torch.nn as nn
 from ml.feature_extractor import INPUT_DIM
 
-LATENT_DIM  = 16
-HIDDEN_DIM  = 64
+LATENT_DIM = 16
+HIDDEN_DIM = 64
+
 
 class VAEEncoder(nn.Module):
-    def __init__(self, input_dim=INPUT_DIM, hidden_dim=HIDDEN_DIM, latent_dim=LATENT_DIM):
+    def __init__(
+        self, input_dim=INPUT_DIM, hidden_dim=HIDDEN_DIM, latent_dim=LATENT_DIM
+    ):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
@@ -29,23 +32,25 @@ class VAEEncoder(nn.Module):
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(),
         )
-        self.fc_mu  = nn.Linear(hidden_dim // 2, latent_dim)
+        self.fc_mu = nn.Linear(hidden_dim // 2, latent_dim)
         self.fc_var = nn.Linear(hidden_dim // 2, latent_dim)
 
     def forward(self, x):
-        h    = self.net(x)
-        mu   = self.fc_mu(h)
+        h = self.net(x)
+        mu = self.fc_mu(h)
         logv = self.fc_var(h)
         return mu, logv
 
     def sample(self, x):
         mu, logv = self.forward(x)
         std = torch.exp(0.5 * logv)
-        return mu + torch.randn_like(std) * std   # reparameterization trick
+        return mu + torch.randn_like(std) * std  # reparameterization trick
 
 
 class VAEDecoder(nn.Module):
-    def __init__(self, latent_dim=LATENT_DIM, hidden_dim=HIDDEN_DIM, output_dim=INPUT_DIM):
+    def __init__(
+        self, latent_dim=LATENT_DIM, hidden_dim=HIDDEN_DIM, output_dim=INPUT_DIM
+    ):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(latent_dim, hidden_dim // 2),
@@ -67,9 +72,9 @@ class OSmosisVAE(nn.Module):
 
     def forward(self, x):
         mu, logv = self.encoder(x)
-        std      = torch.exp(0.5 * logv)
-        z        = mu + torch.randn_like(std) * std
-        recon    = self.decoder(z)
+        std = torch.exp(0.5 * logv)
+        z = mu + torch.randn_like(std) * std
+        recon = self.decoder(z)
         return recon, mu, logv
 
     @staticmethod
